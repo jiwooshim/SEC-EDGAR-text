@@ -75,7 +75,14 @@ class Downloader(object):
             logger.info("Saving extracts (if successful) only. "
                         "Not saving source documents locally.")
         logger.info("SEC filing date range: %i to %i", start_date, end_date)
-        storage_subdirectory_number = 1
+        if args.download_batch_number:
+            prev_subdir = max(os.listdir(storage_toplevel_directory))
+            if len(os.listdir(os.path.join(storage_toplevel_directory, prev_subdir))) < 1000:
+                storage_subdirectory_number = int(prev_subdir)
+            else:
+                storage_subdirectory_number = int(prev_subdir) + 1
+        else:
+            storage_subdirectory_number = 1
 
         for c, company_keys in enumerate(download_companies):
             edgar_search_string = str(company_keys[0])

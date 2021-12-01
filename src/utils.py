@@ -38,6 +38,7 @@ parser.add_argument('--start', help='document start date passed to EDGAR web int
 parser.add_argument('--end', help='document end date passed to EDGAR web interface')
 parser.add_argument('--report_period', help='search pattern for company report dates, e.g. 2012, 201206 etc.')
 parser.add_argument('--batch_signature')
+parser.add_argument('--download_batch_number', help='set up a batch number to add data on top of the specified batch')
 parser.add_argument('--start_company', help='index number of first company to download from the companies_list file')
 parser.add_argument('--end_company', help='index number of last company to download from the companies_list file')
 parser.add_argument('--traffic_limit_pause_ms', help='time to pause between download attempts, to avoid overloading EDGAR server')
@@ -48,7 +49,7 @@ if args.storage:
     if not path.isabs(args.storage):
         args.storage = path.join(project_dir, args.storage)
 else:
-    args.storage = path.join(project_dir, 'output_files_examples')
+    args.storage = path.join(project_dir, 'output')
 
 args.write_sql = args.write_sql or True
 if args.company:
@@ -125,11 +126,14 @@ if args.write_sql:
             time_elapsed real)
             """)
     sql_connection.commit()
-    query_result = sql_cursor.execute('SELECT max(batch_number) FROM metadata').fetchone()
-    if query_result and query_result[0]:
-        batch_number = query_result[0] + 1
+    if args.download_batch_number:
+        batch_number = int(args.download_batch_number)
     else:
-        batch_number = 1
+        query_result = sql_cursor.execute('SELECT max(batch_number) FROM metadata').fetchone()
+        if query_result and query_result[0]:
+            batch_number = query_result[0] + 1
+        else:
+            batch_number = 1
     # put a dummy line into the metadata table to 'reserve' a batch number:
     # prevents other processes running in parallel from taking the same batch_number
     sql_cursor.execute("""
@@ -153,10 +157,15 @@ storage_toplevel_directory = os.path.join(args.storage,
 # (re-)make the storage directory for the current batch. This will delete
 # any contents that might be left over from earlier runs, thus avoiding
 # any potential duplication/overlap/confusion
-if os.path.exists(storage_toplevel_directory):
-    shutil.rmtree(storage_toplevel_directory)
-os.makedirs(storage_toplevel_directory)
+# if os.path.exists(storage_toplevel_directory):
+#     shutil.rmtree(storage_toplevel_directory)
+# os.makedirs(storage_toplevel_directory)
+if not os.path.exists(storage_toplevel_directory):
+    os.makedirs(storage_toplevel_directory)
 
+
+"""Set up variable for the list of documents in a batch
+"""
 
 
 

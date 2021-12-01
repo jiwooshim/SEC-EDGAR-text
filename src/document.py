@@ -14,6 +14,8 @@ import multiprocessing as mp
 
 from .utils import search_terms as master_search_terms
 from .utils import args, logger
+from .utils import storage_toplevel_directory
+
 
 class Document(object):
     __metaclass__ = ABCMeta
@@ -47,6 +49,10 @@ class Document(object):
             txt_output_path = section_output_path + '_excerpt.txt'
             metadata_path = section_output_path + '_metadata.json'
             failure_metadata_output_path = section_output_path + '_failure.json'
+            for dirpath, dirnames, filenames in os.walk(storage_toplevel_directory):
+                if os.path.split(txt_output_path)[-1] in filenames:
+                    logger.info("File already exists, skipping: " + os.path.join(dirpath, os.path.split(txt_output_path)[-1]))
+                    continue
 
             search_pairs = section_search_terms[self.search_terms_type()]
             text_extract, extraction_summary, start_text, end_text, warnings = \
