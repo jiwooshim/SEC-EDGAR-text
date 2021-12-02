@@ -53,12 +53,17 @@ class Metadata(object):
             while attempts < 5:
                 try:
                     ri = requests_get(index_url)
+                    logger.info('Status Code: ' + str(ri.status_code))
+                    if ri.status_code == 429:
+                        logger.warning('Encountered HTTP Status Code 429. Scraping will resume in 30 seconds.')
+                        time.sleep(30)
                     soup = BeautifulSoup(ri.text, 'html.parser')
                     # Parse the page to find metadata
                     form_type = soup.find('div', {'id': 'formHeader'}). \
                         find_next('strong').string.strip()
                     break
-                except:
+                except Exception as e:
+                    logger.warning(e)
                     attempts += 1
                     logger.warning('No valid index page, attempt %i: %s'
                                    % (attempts, index_url))
