@@ -7,6 +7,9 @@
 """
 import re
 import os
+import pandas as pd
+import requests
+import json
 
 from .download import EdgarCrawler
 from .utils import logger, args
@@ -34,7 +37,10 @@ class Downloader(object):
         if not companies:
             try:
                 companies = company_list(companies_file_location)
-                logger.info("Using companies list: %s",
+                if args.companies_list == 'all':
+                    logger.info("Using companies list: 'all companies' (ref: https://www.sec.gov/files/company_tickers_exchange.json)")
+                else:
+                    logger.info("Using companies list: %s",
                             companies_file_location)
             except:
                 logger.warning("Companies list not available")
@@ -120,18 +126,27 @@ def company_list(text_file_location):
     :return: company_dict: each element is a list of CIK code text and
     company descriptive text
     """
-    company_list = list()
-    with open(text_file_location, newline='') as f:
-        for r in f.readlines():
-            if r[0] =='#' and len(company_list) > 0:
-                break
-            if r[0] != '#' and len(r) > 1:
-                r = re.sub('\n', '', r)
-                text_items = re.split('[ ,\t]', r)  # various delimiters allowed
-                edgar_search_text = text_items[0].zfill(10)
-                company_description = '_'.join(
-                    text_items[1:2])
-                company_list.append([edgar_search_text, company_description])
+    if args.companies_list == "all":
+        r = requests.get('https://www.sec.gov/files/company_tickers_exchange.json')
+        df = pd.DataFrame(json.loads(r.text)['data'], columns=json.loads(r.text)['fields'])
+        company_list = list()
+        for i, r in df.iterrows():
+            edgar_search_text = str(r['cik']).zfill(10)
+            company_description = re.sub('\n', '', r['ticker'])
+            company_list.append([edgar_search_text, company_description])
+    else:
+        company_list = list()
+        with open(text_file_location, newline='') as f:
+            for r in f.readlines():
+                if r[0] =='#' and len(company_list) > 0:
+                    break
+                if r[0] != '#' and len(r) > 1:
+                    r = re.sub('\n', '', r)
+                    text_items = re.split('[ ,\t]', r)  # various delimiters allowed
+                    edgar_search_text = text_items[0].zfill(10)
+                    company_description = '_'.join(
+                        text_items[1:2])
+                    company_list.append([edgar_search_text, company_description])
     return company_list
 
 
