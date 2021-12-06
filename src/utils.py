@@ -36,6 +36,7 @@ parser.add_argument('--filings', help='comma-separated list of SEC filings of in
 parser.add_argument('--documents')
 parser.add_argument('--start', help='document start date passed to EDGAR web interface')
 parser.add_argument('--end', help='document end date passed to EDGAR web interface')
+parser.add_argument('--current', help='number from 0-5 indicating which data you want to download. (0=today, 5=5 business days prior)')
 parser.add_argument('--report_period', help='search pattern for company report dates, e.g. 2012, 201206 etc.')
 parser.add_argument('--batch_signature')
 parser.add_argument('--download_batch_number', help='set up a batch number to add data on top of the specified batch')

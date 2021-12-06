@@ -26,7 +26,7 @@ class EdgarCrawler(object):
     def download_filings(self, company_description, edgar_search_string,
                          filing_search_string, date_search_string,
                          start_date, end_date,
-                         do_save_full_document, count=100):
+                         do_save_full_document, filings_links=None, count=100):
         """Build a list of all filings of a certain type, within a date range.
 
         Then download them and extract the text of interest
@@ -38,7 +38,8 @@ class EdgarCrawler(object):
         :return: text_extract: str , warnings: [str]
         """
 
-        filings_links = self.download_filings_links(edgar_search_string,
+        if filings_links is None:
+            filings_links = self.download_filings_links(edgar_search_string,
                                                     company_description,
                                                     filing_search_string,
                                                     date_search_string,
@@ -81,22 +82,107 @@ class EdgarCrawler(object):
                      filing_search_string, company_description)
 
 
-    def process_log_cache(self, log_cache):
-        """Output log_cache messages via logger
+    def download_filings_current(self, date_search_string,
+                                 do_save_full_document):
+        """Build a list of all filings of a certain type, within a date range.
+
+        Then download them and extract the text of interest
+        :param: cik
+        :param: count number of Filing Results to return on the (first) EDGAR
+            Search Results query page. 9999=show all
+        :param: type_serach_string
+        :param: start_date, end_date
+        :return: text_extract: str , warnings: [str]
         """
-        for msg in log_cache:
-            msg_type = msg[0]
-            msg_text = msg[1]
-            if msg_type=='process_name':
-                id = '(' + msg_text + ') '
-            elif msg_type=='INFO':
-                logger.info(id + msg_text)
-            elif msg_type=='DEBUG':
-                logger.debug(id + msg_text)
-            elif msg_type=='WARNING':
-                logger.warning(id + msg_text)
-            elif msg_type=='ERROR':
-                logger.error(id + msg_text)
+
+        filings_links = self.download_filings_links_current()
+
+        logger.info("Identified " + str(len(filings_links)) +
+                    " filings, gathering SEC metadata and document links...")
+
+        is_multiprocessing = args.multiprocessing_cores > 0
+        if is_multiprocessing:
+            pool = mp.Pool(processes = args.multiprocessing_cores)
+
+        for i, filing in enumerate(filings_links):
+            fid = filing[0]
+            edgar_search_string = filing[1]
+            # company_description = filings[2]
+            for company_description in filing[2]:
+                # if len(company_description) > 1:
+                #     company_description = company_description[0]
+                index_url = filing[3]
+                # Get the URL for the (text-format) document which packages all
+                # of the parts of the filing
+                base_url = re.sub('-index.htm.?','',index_url) + ".txt"
+                filing_metadata = Metadata(index_url)
+
+                if re.search('.*',
+                             str(filing_metadata.sec_period_of_report)):
+                    filing_metadata.sec_index_url = index_url
+                    filing_metadata.sec_url = base_url
+                    filing_metadata.company_description = company_description
+                    if is_multiprocessing:
+                        # multi-core processing. Add jobs to pool.
+                        pool.apply_async(self.download_filing,
+                                         args=(filing_metadata, do_save_full_document),
+                                         callback=self.process_log_cache)
+                    else:
+                        # single core processing
+                        log_cache = self.download_filing(filing_metadata, do_save_full_document)
+                        self.process_log_cache(log_cache)
+        if is_multiprocessing:
+            pool.close()
+            pool.join()
+        logger.debug("Finished attempting to download all current filings")
+        labels = {'0': 'Most Recent',
+                  '1': 'One business day prior',
+                  '2': 'Two business days prior',
+                  '3': 'Three business days prior',
+                  '4': 'Four business days prior',
+                  '5': 'Five business days prior'}
+
+        logger.warning(f"SUCCESS: Finished attempted download of recent companies' {args.filings} on: {labels[args.current]}")
+
+
+    def download_filings_links_current(self):
+        from .control import company_list_all
+
+        company_list_all = company_list_all()
+        df_company_list = company_list_all[0]
+        linkList = []  # List of all links from the CIK page
+        q1 = args.current
+        filings_key = {"10-K": 0, "10-Q": 1, "14": 2, "485": 3, "8-K": 4, "S-8": 5, "ALL": 6}
+        if args.filings is not None:
+            for fid in args.filings:
+                if fid in filings_key.keys():
+                    q2 = filings_key[fid]
+                    q3 = 0
+                else:
+                    q2 = 0
+                    q3 = str(fid)
+                sec_website = "https://www.sec.gov/"
+                browse_url = sec_website + "cgi-bin/current"
+                requests_params = {'q1': q1, 'q2': q2, 'q3': q3}
+                full_url = f'https://www.sec.gov/cgi-bin/current?q1={q1}&q2={q2}&q3={q3}'
+
+                logger.info('-' * 100)
+                logger.info(
+                    f"Query EDGAR database for ALL current filings, current filing: {fid}")
+
+                r = requests_get(browse_url, params=requests_params)
+                data = r.text
+                soup = BeautifulSoup(data, "html.parser")
+                current_filings = soup.find('pre').find_all('a')
+                current_filings = [[current_filings[i], current_filings[i+1]] for i in range(0, len(current_filings), 2)]
+
+                for filings in current_filings:
+                    URL = sec_website + filings[0]['href']
+                    edgar_search_string = filings[1].text
+                    company_description = df_company_list[df_company_list['cik'] == int(edgar_search_string)]['ticker']
+                    linkList.append([fid, edgar_search_string, company_description, URL])
+
+        return linkList
 
 
 
@@ -265,4 +351,19 @@ class EdgarCrawler(object):
         return(log_cache)
 
 
-
+    def process_log_cache(self, log_cache):
+        """Output log_cache messages via logger
+        """
+        for msg in log_cache:
+            msg_type = msg[0]
+            msg_text = msg[1]
+            if msg_type=='process_name':
+                id = '(' + msg_text + ') '
+            elif msg_type=='INFO':
+                logger.info(id + msg_text)
+            elif msg_type=='DEBUG':
+                logger.debug(id + msg_text)
+            elif msg_type=='WARNING':
+                logger.warning(id + msg_text)
+            elif msg_type=='ERROR':
+                logger.error(id + msg_text)

@@ -90,6 +90,20 @@ class Downloader(object):
         else:
             storage_subdirectory_number = 1
 
+        if args.current is not None:
+            storage_subdirectory = os.path.join(storage_toplevel_directory,
+                                                format(storage_subdirectory_number,
+                                                       '03d'))
+            if not os.path.exists(storage_subdirectory):
+                os.makedirs(storage_subdirectory)
+            seccrawler.storage_folder = storage_subdirectory
+            seccrawler.download_filings_current(date_search_string,
+                                                    do_save_full_document)
+            if len(os.listdir(storage_subdirectory)) > MAX_FILES_IN_SUBDIRECTORY:
+                storage_subdirectory_number += 1
+
+            return
+
         for c, company_keys in enumerate(download_companies):
             edgar_search_string = str(company_keys[0])
             company_description = str(company_keys[1]).strip()
@@ -120,6 +134,17 @@ class Downloader(object):
                        str(len(companies) or 0) + " companies." )
 
 
+def company_list_all():
+    r = requests.get('https://www.sec.gov/files/company_tickers_exchange.json')
+    df = pd.DataFrame(json.loads(r.text)['data'], columns=json.loads(r.text)['fields'])
+    company_list = list()
+    for i, r in df.iterrows():
+        edgar_search_text = str(r['cik']).zfill(10)
+        company_description = re.sub('\n', '', r['ticker'])
+        company_list.append([edgar_search_text, company_description])
+    return df, company_list
+
+
 def company_list(text_file_location):
     """Read companies list from text_file_location, load into a dictionary.
     :param text_file_location:
@@ -127,13 +152,7 @@ def company_list(text_file_location):
     company descriptive text
     """
     if args.companies_list == "all":
-        r = requests.get('https://www.sec.gov/files/company_tickers_exchange.json')
-        df = pd.DataFrame(json.loads(r.text)['data'], columns=json.loads(r.text)['fields'])
-        company_list = list()
-        for i, r in df.iterrows():
-            edgar_search_text = str(r['cik']).zfill(10)
-            company_description = re.sub('\n', '', r['ticker'])
-            company_list.append([edgar_search_text, company_description])
+        company_list = company_list_all()[1]
     else:
         company_list = list()
         with open(text_file_location, newline='') as f:
