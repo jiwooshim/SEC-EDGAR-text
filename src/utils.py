@@ -167,6 +167,17 @@ if not os.path.exists(storage_toplevel_directory):
     os.makedirs(storage_toplevel_directory)
 
 
+"""Retrieve current files and subdirectories
+"""
+all_files = []
+all_subdir = []
+for f in os.listdir(storage_toplevel_directory):
+    if os.path.isfile(f):
+        all_files.append(f)
+    elif os.path.isdir(f):
+        all_subdir.append(f)
+
+
 """Set up variable for the list of documents in a batch
 """
 
@@ -254,7 +265,8 @@ for filing in search_terms:
 args.documents = args.documents or ','.join(list(search_terms.keys()))
 args.documents = re.split(',', args.documents)          # ['10-K','10-Q']
 
-#retrieve all companies' list
+"""retrieve all companies' list
+"""
 r = requests.get('https://www.sec.gov/files/company_tickers_exchange.json')
 df_company_list_all = pd.DataFrame(json.loads(r.text)['data'], columns=json.loads(r.text)['fields'])
 company_list_all = list()
