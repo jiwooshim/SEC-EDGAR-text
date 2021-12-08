@@ -83,7 +83,10 @@ class Downloader(object):
                         "Not saving source documents locally.")
         logger.info("SEC filing date range: %i to %i", start_date, end_date)
         if args.download_batch_number:
-            prev_subdir = max(os.listdir(storage_toplevel_directory))
+            try:
+                prev_subdir = max([int(s) for s in os.listdir(storage_toplevel_directory)])
+            except ValueError:
+                logger.exception(f"ValueError: subdirectory name is not in type int under {storage_toplevel_directory}")
             if len(os.listdir(os.path.join(storage_toplevel_directory, prev_subdir))) < 1000:
                 storage_subdirectory_number = int(prev_subdir)
             else:
