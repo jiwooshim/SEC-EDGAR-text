@@ -171,11 +171,10 @@ if not os.path.exists(storage_toplevel_directory):
 """
 all_files = []
 all_subdir = []
-for f in os.listdir(storage_toplevel_directory):
-    if os.path.isfile(f):
-        all_files.append(f)
-    elif os.path.isdir(f):
-        all_subdir.append(f)
+for subdir in os.listdir(storage_toplevel_directory):
+    for file in os.listdir(os.path.join(storage_toplevel_directory, subdir)):
+        all_files.append(file)
+    all_subdir.append(subdir)
 
 
 """Set up variable for the list of documents in a batch
