@@ -59,7 +59,7 @@ if args.company:
     single_company = args.company
 else:
     if args.companies_list:
-        companies_file_location = os.path.join(project_dir, args.companies_list)
+        companies_file_location = args.companies_list
     else:
         companies_file_location = os.path.join(project_dir, 'companies_list.txt')
 

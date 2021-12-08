@@ -38,7 +38,7 @@ class Downloader(object):
         if not companies:
             try:
                 companies = company_list(companies_file_location)
-                if args.companies_list == 'all':
+                if companies_file_location == 'all':
                     logger.info("Using companies list: 'all companies' (ref: https://www.sec.gov/files/company_tickers_exchange.json)")
                 else:
                     logger.info("Using companies list: %s",
@@ -141,7 +141,7 @@ def company_list(text_file_location):
     :return: company_dict: each element is a list of CIK code text and
     company descriptive text
     """
-    if args.companies_list == "all":
+    if text_file_location == "all":
         company_list = company_list_all[1]
     else:
         company_list = list()
