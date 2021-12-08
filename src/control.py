@@ -142,7 +142,7 @@ def company_list(text_file_location):
     company descriptive text
     """
     if text_file_location == "all":
-        company_list = company_list_all[1]
+        company_list = company_list_all
     else:
         company_list = list()
         with open(text_file_location, newline='') as f:
