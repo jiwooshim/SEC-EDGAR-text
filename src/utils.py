@@ -20,6 +20,8 @@ import json
 import sqlite3
 import multiprocessing as mp
 from copy import copy
+import requests
+import pandas as pd
 
 
 """Parse the command line arguments
@@ -251,6 +253,15 @@ for filing in search_terms:
  JSON file"""
 args.documents = args.documents or ','.join(list(search_terms.keys()))
 args.documents = re.split(',', args.documents)          # ['10-K','10-Q']
+
+#retrieve all companies' list
+r = requests.get('https://www.sec.gov/files/company_tickers_exchange.json')
+df_company_list_all = pd.DataFrame(json.loads(r.text)['data'], columns=json.loads(r.text)['fields'])
+company_list_all = list()
+for i, r in df_company_list_all.iterrows():
+    edgar_search_text = str(r['cik']).zfill(10)
+    company_description = re.sub('\n', '', r['ticker'])
+    company_list_all.append([edgar_search_text, company_description])
 
 
 def requests_get(url, params=None):

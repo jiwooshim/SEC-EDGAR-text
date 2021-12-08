@@ -17,6 +17,7 @@ from .metadata import Metadata
 from .utils import search_terms as master_search_terms
 from .html_document import HtmlDocument
 from .text_document import TextDocument
+from .utils import df_company_list_all, company_list_all
 
 
 class EdgarCrawler(object):
@@ -80,6 +81,56 @@ class EdgarCrawler(object):
             pool.join()
         logger.debug("Finished attempting to download all the %s forms for %s",
                      filing_search_string, company_description)
+
+
+    def download_filings_links(self, edgar_search_string, company_description,
+                               filing_search_string, date_search_string,
+                               start_date, end_date, count):
+        """[docstring here]
+        :param edgar_search_string: 10-digit integer CIK code, or ticker
+        :param company_description:
+        :param filing_search_string: e.g. '10-K'
+        :param start_date: ccyymmdd
+        :param end_date: ccyymmdd
+        :param count:
+        :return: linkList, a list of links to main pages for each filing found
+        example of a typical base_url: http://www.sec.gov/cgi-bin/browse-secedgartext?action=getcompany&CIK=0000051143&type=10-K&datea=20011231&dateb=20131231&owner=exclude&output=xml&count=9999
+        """
+
+        sec_website = "https://www.sec.gov/"
+        browse_url = sec_website + "cgi-bin/browse-edgar"
+        requests_params = {'action': 'getcompany',
+                           'CIK': str(edgar_search_string),
+                           'type': filing_search_string,
+                           'datea': start_date,
+                           'dateb': end_date,
+                           'owner': 'exclude',
+                           'output': 'html',
+                           'count': count}
+        logger.info('-' * 100)
+        logger.info(
+            "Query EDGAR database for " + filing_search_string + ", Search: " +
+            str(edgar_search_string) + " (" + company_description + ")")
+
+        linkList = []  # List of all links from the CIK page
+        continuation_tag = 'first pass'
+
+        while continuation_tag:
+            r = requests_get(browse_url, params=requests_params)
+            if continuation_tag == 'first pass':
+                logger.debug("EDGAR search URL: " + r.url)
+                logger.info('-' * 100)
+            data = r.text
+            soup = BeautifulSoup(data, "html.parser")
+            for link in soup.find_all('a', {'id': 'documentsbutton'}):
+                URL = sec_website + link['href']
+                linkList.append(URL)
+            continuation_tag = soup.find('input', {'value': 'Next ' + str(count)}) # a button labelled 'Next 100' for example
+            if continuation_tag:
+                continuation_string = continuation_tag['onclick']
+                browse_url = sec_website + re.findall('cgi-bin.*count=\d*', continuation_string)[0]
+                requests_params = None
+        return linkList
 
 
     def download_filings_current(self, date_search_string,
@@ -146,10 +197,6 @@ class EdgarCrawler(object):
 
 
     def download_filings_links_current(self):
-        from .control import company_list_all
-
-        company_list_all = company_list_all()
-        df_company_list = company_list_all[0]
         linkList = []  # List of all links from the CIK page
         q1 = args.current
         filings_key = {"10-K": 0, "10-Q": 1, "14": 2, "485": 3, "8-K": 4, "S-8": 5, "ALL": 6}
@@ -179,60 +226,9 @@ class EdgarCrawler(object):
                 for filings in current_filings:
                     URL = sec_website + filings[0]['href']
                     edgar_search_string = filings[1].text
-                    company_description = df_company_list[df_company_list['cik'] == int(edgar_search_string)]['ticker']
+                    company_description = df_company_list_all[df_company_list_all['cik'] == int(edgar_search_string)]['ticker']
                     linkList.append([fid, edgar_search_string, company_description, URL])
 
-        return linkList
-
-
-
-    def download_filings_links(self, edgar_search_string, company_description,
-                               filing_search_string, date_search_string,
-                               start_date, end_date, count):
-        """[docstring here]
-        :param edgar_search_string: 10-digit integer CIK code, or ticker
-        :param company_description:
-        :param filing_search_string: e.g. '10-K'
-        :param start_date: ccyymmdd
-        :param end_date: ccyymmdd
-        :param count:
-        :return: linkList, a list of links to main pages for each filing found
-        example of a typical base_url: http://www.sec.gov/cgi-bin/browse-secedgartext?action=getcompany&CIK=0000051143&type=10-K&datea=20011231&dateb=20131231&owner=exclude&output=xml&count=9999
-        """
-
-        sec_website = "https://www.sec.gov/"
-        browse_url = sec_website + "cgi-bin/browse-edgar"
-        requests_params = {'action': 'getcompany',
-                           'CIK': str(edgar_search_string),
-                           'type': filing_search_string,
-                           'datea': start_date,
-                           'dateb': end_date,
-                           'owner': 'exclude',
-                           'output': 'html',
-                           'count': count}
-        logger.info('-' * 100)
-        logger.info(
-            "Query EDGAR database for " + filing_search_string + ", Search: " +
-            str(edgar_search_string) + " (" + company_description + ")")
-
-        linkList = []  # List of all links from the CIK page
-        continuation_tag = 'first pass'
-
-        while continuation_tag:
-            r = requests_get(browse_url, params=requests_params)
-            if continuation_tag == 'first pass':
-                logger.debug("EDGAR search URL: " + r.url)
-                logger.info('-' * 100)
-            data = r.text
-            soup = BeautifulSoup(data, "html.parser")
-            for link in soup.find_all('a', {'id': 'documentsbutton'}):
-                URL = sec_website + link['href']
-                linkList.append(URL)
-            continuation_tag = soup.find('input', {'value': 'Next ' + str(count)}) # a button labelled 'Next 100' for example
-            if continuation_tag:
-                continuation_string = continuation_tag['onclick']
-                browse_url = sec_website + re.findall('cgi-bin.*count=\d*', continuation_string)[0]
-                requests_params = None
         return linkList
 
 

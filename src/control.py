@@ -15,6 +15,7 @@ from .download import EdgarCrawler
 from .utils import logger, args
 from .utils import companies_file_location, single_company, date_search_string
 from .utils import batch_number, storage_toplevel_directory
+from .utils import df_company_list_all, company_list_all
 
 MAX_FILES_IN_SUBDIRECTORY = 1000
 
@@ -134,17 +135,6 @@ class Downloader(object):
                        str(len(companies) or 0) + " companies." )
 
 
-def company_list_all():
-    r = requests.get('https://www.sec.gov/files/company_tickers_exchange.json')
-    df = pd.DataFrame(json.loads(r.text)['data'], columns=json.loads(r.text)['fields'])
-    company_list = list()
-    for i, r in df.iterrows():
-        edgar_search_text = str(r['cik']).zfill(10)
-        company_description = re.sub('\n', '', r['ticker'])
-        company_list.append([edgar_search_text, company_description])
-    return df, company_list
-
-
 def company_list(text_file_location):
     """Read companies list from text_file_location, load into a dictionary.
     :param text_file_location:
@@ -152,7 +142,7 @@ def company_list(text_file_location):
     company descriptive text
     """
     if args.companies_list == "all":
-        company_list = company_list_all()[1]
+        company_list = company_list_all[1]
     else:
         company_list = list()
         with open(text_file_location, newline='') as f:
