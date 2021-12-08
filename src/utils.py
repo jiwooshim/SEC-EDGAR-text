@@ -271,7 +271,7 @@ df_company_list_all = pd.DataFrame(json.loads(r.text)['data'], columns=json.load
 company_list_all = list()
 for i, r in df_company_list_all.iterrows():
     edgar_search_text = str(r['cik']).zfill(10)
-    company_description = re.sub('\n', '', r['ticker'])
+    company_description = re.sub('\n', '', r['ticker']).lower()
     company_list_all.append([edgar_search_text, company_description])
 
 
