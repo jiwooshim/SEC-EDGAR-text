@@ -32,6 +32,7 @@ project_dir = path.dirname(path.dirname(__file__))
 parser = argparse.ArgumentParser()
 parser.add_argument('--storage', help='Specify path to storage location')
 parser.add_argument('--write_sql', default=True, help='Save metadata to sqlite database? (Boolean)')
+parser.add_argument('--sql_storage', help='Specify path to sqlite database location')
 parser.add_argument('--company', help='CIK code specifying company for single-company download')
 parser.add_argument('--companies_list', help='path of text file with all company CIK codes to download, or type "all" for all companies')
 parser.add_argument('--filings', help='comma-separated list of SEC filings of interest (10-Q,10-K...)')
@@ -72,18 +73,22 @@ if '10-K' in args.filings:
     search_window_days = 365
 else:
     search_window_days = 91
-ccyymmdd_default_start = (datetime.datetime.now() - datetime.timedelta(days=
-                      search_window_days)).strftime('%Y%m%d')
-args.start = int(args.start or \
-    input('Enter start date for filings search (default: ' +
-          ccyymmdd_default_start + '): ') or \
-             ccyymmdd_default_start)
-ccyymmdd_default_end = (datetime.datetime.strptime(str(args.start), '%Y%m%d') +
-                        datetime.timedelta(days=search_window_days)).strftime('%Y%m%d')
-args.end = int(args.end or \
-    input('Enter end date for filings search (default: ' +
-          ccyymmdd_default_end + '): ') or \
-            ccyymmdd_default_end)
+if args.current:
+    args.start = 19000101
+    args.end = 99991231
+else:
+    ccyymmdd_default_start = (datetime.datetime.now() - datetime.timedelta(days=
+                          search_window_days)).strftime('%Y%m%d')
+    args.start = int(args.start or \
+        input('Enter start date for filings search (default: ' +
+              ccyymmdd_default_start + '): ') or \
+                 ccyymmdd_default_start)
+    ccyymmdd_default_end = (datetime.datetime.strptime(str(args.start), '%Y%m%d') +
+                            datetime.timedelta(days=search_window_days)).strftime('%Y%m%d')
+    args.end = int(args.end or \
+        input('Enter end date for filings search (default: ' +
+              ccyymmdd_default_end + '): ') or \
+                ccyymmdd_default_end)
 if str(args.report_period).lower() == 'all':
     date_search_string = '.*'
 else:
@@ -99,7 +104,10 @@ batch_start_time = datetime.datetime.utcnow()
 batch_machine_id = socket.gethostname()
 
 if args.write_sql:
-    db_location = path.join(args.storage, 'metadata.sqlite3')
+    if args.sql_storage:
+        db_location = path.join(args.sql_storage, 'metadata.sqlite3')
+    else:
+        db_location = path.join(args.storage, 'metadata.sqlite3')
     sql_connection = sqlite3.connect(db_location)
     sql_cursor = sql_connection.cursor()
     sql_cursor.execute("""
