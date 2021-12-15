@@ -53,7 +53,7 @@ class EdgarCrawler(object):
 
         is_multiprocessing = args.multiprocessing_cores > 0
         if is_multiprocessing:
-            pool = mp.Pool(processes = args.multiprocessing_cores)
+            pool = mp.Pool(processes=args.multiprocessing_cores)
 
         for i, index_url in enumerate(filings_links):
             # Get the URL for the (text-format) document which packages all
@@ -62,20 +62,21 @@ class EdgarCrawler(object):
             filings_list.append([index_url, base_url, company_description])
             filing_metadata = Metadata(index_url)
 
-            if re.search(date_search_string,
-                         str(filing_metadata.sec_period_of_report)):
+            if re.search(date_search_string, str(filing_metadata.sec_period_of_report)):
                 filing_metadata.sec_index_url = index_url
                 filing_metadata.sec_url = base_url
                 filing_metadata.company_description = company_description
                 if is_multiprocessing:
                     # multi-core processing. Add jobs to pool.
                     pool.apply_async(self.download_filing,
-                                     args=(filing_metadata, do_save_full_document),
-                                     callback=self.process_log_cache)
+                                     args=(filing_metadata, do_save_full_document))
                 else:
                     # single core processing
                     log_cache = self.download_filing(filing_metadata, do_save_full_document)
-                    self.process_log_cache(log_cache)
+                    # self.process_log_cache(log_cache)
+            else:
+                logger.debug(
+                    f"REGEX search {date_search_string} and {str(filing_metadata.sec_period_of_report)} not found")
         if is_multiprocessing:
             pool.close()
             pool.join()
@@ -176,12 +177,12 @@ class EdgarCrawler(object):
                     if is_multiprocessing:
                         # multi-core processing. Add jobs to pool.
                         pool.apply_async(self.download_filing,
-                                         args=(filing_metadata, do_save_full_document),
-                                         callback=self.process_log_cache)
+                                         args=(filing_metadata, do_save_full_document))
+                                         # callback=self.process_log_cache)
                     else:
                         # single core processing
                         log_cache = self.download_filing(filing_metadata, do_save_full_document)
-                        self.process_log_cache(log_cache)
+                        # self.process_log_cache(log_cache)
         if is_multiprocessing:
             pool.close()
             pool.join()
@@ -344,6 +345,8 @@ class EdgarCrawler(object):
                 else:
                     filing_metadata.original_file_name = \
                         "file was not saved locally"
+
+        self.process_log_cache(log_cache)
         return(log_cache)
 
 

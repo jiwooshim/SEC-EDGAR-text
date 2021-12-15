@@ -32,6 +32,7 @@ project_dir = path.dirname(path.dirname(__file__))
 parser = argparse.ArgumentParser()
 parser.add_argument('--storage', help='Specify path to storage location')
 parser.add_argument('--write_sql', default=True, help='Save metadata to sqlite database? (Boolean)')
+parser.add_argument('--sql_storage', help='Specify path to sqlite database location')
 parser.add_argument('--company', help='CIK code specifying company for single-company download')
 parser.add_argument('--companies_list', help='path of text file with all company CIK codes to download, or type "all" for all companies')
 parser.add_argument('--filings', help='comma-separated list of SEC filings of interest (10-Q,10-K...)')
@@ -99,7 +100,10 @@ batch_start_time = datetime.datetime.utcnow()
 batch_machine_id = socket.gethostname()
 
 if args.write_sql:
-    db_location = path.join(args.storage, 'metadata.sqlite3')
+    if args.sql_storage:
+        db_location = path.join(args.sql_storage, 'metadata.sqlite3')
+    else:
+        db_location = path.join(args.storage, 'metadata.sqlite3')
     sql_connection = sqlite3.connect(db_location)
     sql_cursor = sql_connection.cursor()
     sql_cursor.execute("""

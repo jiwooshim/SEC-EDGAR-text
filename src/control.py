@@ -84,7 +84,12 @@ class Downloader(object):
         logger.info("SEC filing date range: %i to %i", start_date, end_date)
         if args.download_batch_number:
             try:
-                prev_subdir = str(max([int(s) for s in os.listdir(storage_toplevel_directory)])).zfill(4)
+                subdir_list = [int(s) for s in os.listdir(storage_toplevel_directory)]
+                if len(subdir_list) == 0:
+                    prev_subdir = '001'
+                    os.makedirs(os.path.join(storage_toplevel_directory, prev_subdir))
+                else:
+                    prev_subdir = str(max(subdir_list)).zfill(4)
             except ValueError:
                 logger.exception(f"ValueError: subdirectory name is not in type int under {storage_toplevel_directory}")
             if len(os.listdir(os.path.join(storage_toplevel_directory, prev_subdir))) < 1000:
