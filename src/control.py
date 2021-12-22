@@ -7,9 +7,6 @@
 """
 import re
 import os
-import pandas as pd
-import requests
-import json
 
 from .download import EdgarCrawler
 from .utils import logger, args

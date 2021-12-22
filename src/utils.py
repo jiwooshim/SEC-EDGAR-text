@@ -275,7 +275,12 @@ args.documents = re.split(',', args.documents)          # ['10-K','10-Q']
 """retrieve all companies' list
 """
 r = requests.get('https://www.sec.gov/files/company_tickers_exchange.json')
-df_company_list_all = pd.DataFrame(json.loads(r.text)['data'], columns=json.loads(r.text)['fields'])
+try:
+    df_company_list_all = pd.DataFrame(json.loads(r.text)['data'], columns=json.loads(r.text)['fields'])
+except json.decoder.JSONDecodeError:
+    r = requests.get('https://www.sec.gov/files/company_tickers.json')
+    df_company_list_all = pd.DataFrame(json.loads(r.text).values())
+    df_company_list_all = df_company_list_all.rename(columns={'cik_str': 'cik', 'title': 'conm'})
 company_list_all = list()
 for i, r in df_company_list_all.iterrows():
     edgar_search_text = str(r['cik']).zfill(10)
